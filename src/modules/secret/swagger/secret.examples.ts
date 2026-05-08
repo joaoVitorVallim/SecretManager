@@ -22,5 +22,5 @@ export const secretResponseExample = {
 };
 
 export const secretDeactivateResponseExample = {
-	message: 'Cadastro inativado',
+	message: 'Secret deactivated',
 };

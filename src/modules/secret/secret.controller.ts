@@ -38,7 +38,7 @@ export class SecretController {
   constructor(private readonly secretService: SecretService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Registrar secret' })
+  @ApiOperation({ summary: 'Register secret' })
   @ApiBody(registerBody)
   @ApiCreatedResponse(secretCreatedResponse)
   @ApiConflictResponse(conflictResponse)
@@ -48,7 +48,7 @@ export class SecretController {
   }
 
   @Post('rotate')
-  @ApiOperation({ summary: 'Rotacionar secret' })
+  @ApiOperation({ summary: 'Rotate secret' })
   @ApiBody(rotateBody)
   @ApiCreatedResponse(secretCreatedResponse)
   @ApiNotFoundResponse(notFoundActiveResponse)
@@ -58,7 +58,7 @@ export class SecretController {
   }
 
   @Get('by-row')
-  @ApiOperation({ summary: 'Buscar secret ativo por row' })
+  @ApiOperation({ summary: 'Get active secret by row' })
   @ApiQuery(rowTypeQuery)
   @ApiQuery(rowSystemQuery)
   @ApiQuery(rowIdentifiersQuery)
@@ -74,7 +74,7 @@ export class SecretController {
   }
 
   @Get('by-hash/:hash')
-  @ApiOperation({ summary: 'Buscar secret ativo por hash' })
+  @ApiOperation({ summary: 'Get active secret by hash' })
   @ApiParam(hashParam)
   @ApiOkResponse(secretOkResponse)
   @ApiNotFoundResponse(notFoundActiveResponse)
@@ -83,7 +83,7 @@ export class SecretController {
   }
 
   @Get('by-id/:id')
-  @ApiOperation({ summary: 'Buscar secret por id' })
+  @ApiOperation({ summary: 'Get secret by id' })
   @ApiParam(idParam)
   @ApiOkResponse(secretOkResponse)
   @ApiNotFoundResponse(notFoundResponse)
@@ -92,7 +92,7 @@ export class SecretController {
   }
 
   @Patch('by-row/deactivate')
-  @ApiOperation({ summary: 'Inativar secret por row' })
+  @ApiOperation({ summary: 'Deactivate secret by row' })
   @ApiQuery(rowTypeQuery)
   @ApiQuery(rowSystemQuery)
   @ApiQuery(rowIdentifiersQuery)
@@ -108,7 +108,7 @@ export class SecretController {
   }
 
   @Patch('by-hash/:hash/deactivate')
-  @ApiOperation({ summary: 'Inativar secret por hash' })
+  @ApiOperation({ summary: 'Deactivate secret by hash' })
   @ApiParam(hashParam)
   @ApiOkResponse(deactivateOkResponse)
   @ApiNotFoundResponse(notFoundActiveResponse)
@@ -117,7 +117,7 @@ export class SecretController {
   }
 
   @Patch('by-id/:id/deactivate')
-  @ApiOperation({ summary: 'Inativar secret por id' })
+  @ApiOperation({ summary: 'Deactivate secret by id' })
   @ApiParam(idParam)
   @ApiOkResponse(deactivateOkResponse)
   @ApiNotFoundResponse(notFoundResponse)

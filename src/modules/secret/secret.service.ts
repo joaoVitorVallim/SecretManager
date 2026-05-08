@@ -25,7 +25,7 @@ export class SecretService {
     });
 
     if (existing) {
-      throw new ConflictException('Secret ativo ja existe, caso queira inativar a existente e criar uma nova, use a rota /rotate');
+      throw new ConflictException('Active secret already exists. Use /rotate to deactivate and create a new one.');
     }
 
     const secret = this.secretRepository.create({
@@ -50,7 +50,7 @@ export class SecretService {
       const active = await repo.findOne({where: { reference_hash, is_active: true }});
 
       if (!active) {
-        throw new NotFoundException('Nenhum secret ativo encontrado, caso queira criar um utilize a rota /register');
+        throw new NotFoundException('No active secret found. Use /register to create one.');
       }
 
       await this.secretRepository.update(active.id, {
@@ -77,7 +77,7 @@ export class SecretService {
     const secret = await this.secretRepository.findOne({where: { reference_hash, is_active: true }});
 
     if (!secret) {
-      throw new NotFoundException('Secret ativo nao encontrado');
+      throw new NotFoundException('Active secret not found');
     }
 
     const credentials = this.cryptoService.decrypt(secret.credentials);
@@ -92,7 +92,7 @@ export class SecretService {
     const secret = await this.secretRepository.findOne({where: { reference_hash: hash, is_active: true }});
 
     if (!secret) {
-      throw new NotFoundException('Secret ativo nao encontrado');
+      throw new NotFoundException('Active secret not found');
     }
 
     const credentials = this.cryptoService.decrypt(secret.credentials);
@@ -113,7 +113,7 @@ export class SecretService {
     });
 
     if (!secret) {
-      throw new NotFoundException('Secret nao encontrado');
+      throw new NotFoundException('Secret not found');
     }
 
     const credentials = this.cryptoService.decrypt(secret.credentials);
@@ -131,7 +131,7 @@ export class SecretService {
     });
 
     if (!secret) {
-      throw new NotFoundException('Secret nao encontrado');
+      throw new NotFoundException('Secret not found');
     }
 
     const credentials = this.cryptoService.decrypt(secret.credentials);
@@ -146,7 +146,7 @@ export class SecretService {
     const secret = await this.secretRepository.findOne({where: { id }});
 
     if (!secret) {
-      throw new NotFoundException('Secret nao encontrado');
+      throw new NotFoundException('Secret not found');
     }
 
     const credentials = this.cryptoService.decrypt(secret.credentials);
@@ -176,7 +176,7 @@ export class SecretService {
 
   private async deactivateSecret(secret: SecretEntity) {
     if (!secret.is_active) {
-      return { message: 'Secret ja esta inativo' };
+      return { message: 'Secret already inactive' };
     }
 
     await this.secretRepository.update(secret.id, {
@@ -184,14 +184,14 @@ export class SecretService {
       deactivated_at: new Date(),
     });
 
-    return { message: 'Secret inativado' };
+    return { message: 'Secret deactivated' };
   }
 
   private normalizeReferenceRow(reference_row: string) {
     const normalized = (reference_row ?? '').trim();
 
     if (!normalized) {
-      throw new BadRequestException('Campo reference_row e obrigatorio');
+      throw new BadRequestException('reference_row is required');
     }
 
     const parts = normalized
@@ -201,7 +201,7 @@ export class SecretService {
 
     if (parts.length < 3) {
       throw new BadRequestException(
-        'reference_row deve possuir no minimo 3 argumentos: type:system:identifiers',
+        'reference_row must have at least 3 segments: type:system:identifiers',
       );
     }
 
@@ -220,7 +220,7 @@ export class SecretService {
     const normalized = (value ?? '').trim();
 
     if (!normalized) {
-      throw new BadRequestException(`Parametro obrigatorio: ${label ?? 'valor'}`);
+      throw new BadRequestException(`Required parameter: ${label ?? 'value'}`);
     }
 
     return normalized;
@@ -228,14 +228,14 @@ export class SecretService {
 
   private normalizeIdentifiers(identifiers: string | string[]) {
     if (!identifiers) {
-      throw new BadRequestException('Parametro obrigatorio: identifiers');
+      throw new BadRequestException('Required parameter: identifiers');
     }
 
     const parts = Array.isArray(identifiers) ? identifiers : String(identifiers).split(',');
     const normalized = parts.map((item) => item.trim()).filter(Boolean).join(':');
 
     if (!normalized) {
-      throw new BadRequestException('Erro no formato de identifiers');
+      throw new BadRequestException('Invalid identifiers format');
     }
 
     return normalized;
@@ -261,7 +261,7 @@ export class SecretService {
     const parsed = new Date(normalized);
 
     if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException('expires_at invalido');
+      throw new BadRequestException('expires_at is invalid');
     }
 
     return parsed;

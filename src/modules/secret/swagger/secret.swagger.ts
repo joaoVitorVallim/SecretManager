@@ -12,7 +12,7 @@ import {
 } from './secret.examples';
 
 export const registerBody: ApiBodyOptions = {
-	description: 'Registra um secret. Campos extras nao mapeados sao aceitos.',
+	description: 'Registers a secret. Extra unmapped fields are accepted.',
 	schema: {
 		type: 'object',
 		additionalProperties: true,
@@ -21,7 +21,7 @@ export const registerBody: ApiBodyOptions = {
 };
 
 export const rotateBody: ApiBodyOptions = {
-	description: 'Inativa o secret ativo e cria outro.',
+	description: 'Deactivates the active secret and creates a new one.',
 	schema: {
 		type: 'object',
 		additionalProperties: true,
@@ -33,21 +33,21 @@ export const rowTypeQuery: ApiQueryOptions = {
 	name: 'type',
 	required: true,
 	example: 'API',
-	description: 'Tipo do segredo',
+	description: 'Secret type',
 };
 
 export const rowSystemQuery: ApiQueryOptions = {
 	name: 'system',
 	required: true,
 	example: 'bling',
-	description: 'Sistema de origem',
+	description: 'Origin system',
 };
 
 export const rowIdentifiersQuery: ApiQueryOptions = {
 	name: 'identifiers',
 	required: true,
 	example: '123,456',
-	description: 'Lista de identificadores separados por virgula',
+	description: 'Comma-separated identifiers',
 };
 
 export const hashParam: ApiParamOptions = {
@@ -63,65 +63,65 @@ export const idParam: ApiParamOptions = {
 };
 
 export const secretCreatedResponse: ApiResponseOptions = {
-	description: 'Cadastro criado',
+	description: 'Secret created',
 	schema: {
 		example: secretResponseExample,
 	},
 };
 
 export const secretOkResponse: ApiResponseOptions = {
-	description: 'Cadastro ativo',
+	description: 'Active secret',
 	schema: {
 		example: secretResponseExample,
 	},
 };
 
 export const deactivateOkResponse: ApiResponseOptions = {
-	description: 'Cadastro inativado',
+	description: 'Secret deactivated',
 	schema: {
 		example: secretDeactivateResponseExample,
 	},
 };
 
 export const badRequestResponse: ApiResponseOptions = {
-	description: 'Parametros invalidos',
+	description: 'Invalid parameters',
 	schema: {
 		example: {
 			statusCode: 400,
-			message: 'Parametro obrigatorio: identifiers',
+			message: 'Required parameter: identifiers',
 			error: 'Bad Request',
 		},
 	},
 };
 
 export const conflictResponse: ApiResponseOptions = {
-	description: 'Cadastro ativo ja existe',
+	description: 'Active secret already exists',
 	schema: {
 		example: {
 			statusCode: 409,
-			message: 'Cadastro ativo ja existe',
+			message: 'Active secret already exists',
 			error: 'Conflict',
 		},
 	},
 };
 
 export const notFoundActiveResponse: ApiResponseOptions = {
-	description: 'Cadastro ativo nao encontrado',
+	description: 'Active secret not found',
 	schema: {
 		example: {
 			statusCode: 404,
-			message: 'Cadastro ativo nao encontrado',
+			message: 'Active secret not found',
 			error: 'Not Found',
 		},
 	},
 };
 
 export const notFoundResponse: ApiResponseOptions = {
-	description: 'Cadastro nao encontrado',
+	description: 'Secret not found',
 	schema: {
 		example: {
 			statusCode: 404,
-			message: 'Cadastro nao encontrado',
+			message: 'Secret not found',
 			error: 'Not Found',
 		},
 	},
