@@ -5,68 +5,63 @@ import { createHash } from 'crypto';
 
 import { SecretEntity } from './entities/secret.entity';
 import { CreateSecretDto } from './dto/create-secret.dto';
+import { CryptoService } from 'src/common/guards/crypto.service';
 
 @Injectable()
 export class SecretService {
   constructor(
     @InjectRepository(SecretEntity)
     private readonly secretRepository: Repository<SecretEntity>,
+    private readonly cryptoService: CryptoService,
   ) {}
 
   async register(data: CreateSecretDto) {
     const reference_row = this.normalizeReferenceRow(data.reference_row);
     const reference_hash = this.computeHash(reference_row);
+    const encrypted = this.cryptoService.encrypt(data.credentials);
 
     const existing = await this.secretRepository.findOne({
       where: { reference_hash, is_active: true },
     });
 
     if (existing) {
-      throw new ConflictException('Cadastro ativo ja existe');
+      throw new ConflictException('Secret ativo ja existe, caso queira inativar a existente e criar uma nova, use a rota /rotate');
     }
 
     const secret = this.secretRepository.create({
       reference_row,
       reference_hash,
-      credentials: data.credentials,
+      credentials: encrypted,
       expires_at: this.toDate(data.expires_at),
       is_active: true,
     });
 
-    try {
-      return await this.secretRepository.save(secret);
-    } catch (error) {
-      if (this.isUniqueViolation(error)) {
-        throw new ConflictException('Cadastro ativo ja existe');
-      }
-
-      throw error;
-    }
+    return await this.secretRepository.save(secret);
   }
 
   async rotate(data: CreateSecretDto) {
     const reference_row = this.normalizeReferenceRow(data.reference_row);
     const reference_hash = this.computeHash(reference_row);
+    const encrypted = this.cryptoService.encrypt(data.credentials);
 
     return this.secretRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(SecretEntity);
 
-      const active = await repo.findOne({
-        where: { reference_hash, is_active: true },
-      });
+      const active = await repo.findOne({where: { reference_hash, is_active: true }});
 
       if (!active) {
-        throw new NotFoundException('Cadastro ativo nao encontrado');
+        throw new NotFoundException('Nenhum secret ativo encontrado, caso queira criar um utilize a rota /register');
       }
 
-      active.is_active = false;
-      active.deactivated_at = new Date();
-      await repo.save(active);
+      await this.secretRepository.update(active.id, {
+        is_active: false,
+        deactivated_at: new Date(),
+      });
 
       const secret = repo.create({
         reference_row,
         reference_hash,
-        credentials: data.credentials,
+        credentials: encrypted,
         expires_at: this.toDate(data.expires_at),
         is_active: true,
       });
@@ -75,52 +70,102 @@ export class SecretService {
     });
   }
 
-  async findActiveByRow(type?: string, system?: string, identifiers?: string | string[]) {
+  async findActiveByRow(type: string, system: string, identifiers: string | string[]) {
+    const reference_row = this.buildReferenceRowFromQuery(type, system, identifiers);
+    const reference_hash = this.computeHash(reference_row);
+
+    const secret = await this.secretRepository.findOne({where: { reference_hash, is_active: true }});
+
+    if (!secret) {
+      throw new NotFoundException('Secret ativo nao encontrado');
+    }
+
+    const credentials = this.cryptoService.decrypt(secret.credentials);
+
+    return {
+      ...secret,
+      credentials
+    };
+  }
+
+  async findActiveByHash(hash: string) {
+    const secret = await this.secretRepository.findOne({where: { reference_hash: hash, is_active: true }});
+
+    if (!secret) {
+      throw new NotFoundException('Secret ativo nao encontrado');
+    }
+
+    const credentials = this.cryptoService.decrypt(secret.credentials);
+
+    return {
+      ...secret,
+      credentials
+    };
+  }
+
+  async findByRow(type: string, system: string, identifiers: string | string[]) {
     const reference_row = this.buildReferenceRowFromQuery(type, system, identifiers);
     const reference_hash = this.computeHash(reference_row);
 
     const secret = await this.secretRepository.findOne({
-      where: { reference_hash, reference_row, is_active: true },
+      where: { reference_hash },
+      order: { is_active: 'DESC', id: 'DESC' },
     });
 
     if (!secret) {
-      throw new NotFoundException('Cadastro ativo nao encontrado');
+      throw new NotFoundException('Secret nao encontrado');
     }
 
-    return secret;
+    const credentials = this.cryptoService.decrypt(secret.credentials);
+
+    return {
+      ...secret,
+      credentials
+    };
   }
 
-  async findActiveByHash(hash: string) {
+  async findByHash(hash: string) {
     const secret = await this.secretRepository.findOne({
-      where: { reference_hash: hash, is_active: true },
+      where: { reference_hash: hash },
+      order: { is_active: 'DESC', id: 'DESC' },
     });
 
     if (!secret) {
-      throw new NotFoundException('Cadastro ativo nao encontrado');
+      throw new NotFoundException('Secret nao encontrado');
     }
 
-    return secret;
+    const credentials = this.cryptoService.decrypt(secret.credentials);
+
+    return {
+      ...secret,
+      credentials
+    };
   }
 
   async findById(id: number) {
-    const secret = await this.secretRepository.findOne({
-      where: { id },
-    });
+    const secret = await this.secretRepository.findOne({where: { id }});
 
     if (!secret) {
-      throw new NotFoundException('Cadastro nao encontrado');
+      throw new NotFoundException('Secret nao encontrado');
     }
 
-    return secret;
+    const credentials = this.cryptoService.decrypt(secret.credentials);
+
+    return {
+      ...secret,
+      credentials
+    };
+
   }
 
-  async deactivateByRow(type?: string, system?: string, identifiers?: string | string[]) {
-    const secret = await this.findActiveByRow(type, system, identifiers);
+  async deactivateByRow(type: string, system: string, identifiers: string | string[]) {
+    const secret = await this.findByRow(type, system, identifiers);
     return this.deactivateSecret(secret);
   }
 
   async deactivateByHash(hash: string) {
-    const secret = await this.findActiveByHash(hash);
+    const secret = await this.findByHash(hash);
+    console.log(secret)
     return this.deactivateSecret(secret);
   }
 
@@ -131,28 +176,39 @@ export class SecretService {
 
   private async deactivateSecret(secret: SecretEntity) {
     if (!secret.is_active) {
-      return { message: 'Cadastro ja estava inativo' };
+      return { message: 'Secret ja esta inativo' };
     }
 
-    secret.is_active = false;
-    secret.deactivated_at = new Date();
+    await this.secretRepository.update(secret.id, {
+      is_active: false,
+      deactivated_at: new Date(),
+    });
 
-    await this.secretRepository.save(secret);
-
-    return { message: 'Cadastro inativado' };
+    return { message: 'Secret inativado' };
   }
 
-  private normalizeReferenceRow(reference_row?: string) {
+  private normalizeReferenceRow(reference_row: string) {
     const normalized = (reference_row ?? '').trim();
 
     if (!normalized) {
       throw new BadRequestException('Campo reference_row e obrigatorio');
     }
 
-    return normalized;
+    const parts = normalized
+      .split(':')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length < 3) {
+      throw new BadRequestException(
+        'reference_row deve possuir no minimo 3 argumentos: type:system:identifiers',
+      );
+    }
+
+    return parts.join(':');
   }
 
-  private buildReferenceRowFromQuery(type?: string, system?: string, identifiers?: string | string[]) {
+  private buildReferenceRowFromQuery(type: string, system: string, identifiers: string | string[]) {
     const normalizedType = this.normalizeSegment(type, 'type');
     const normalizedSystem = this.normalizeSegment(system, 'system');
     const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
@@ -160,7 +216,7 @@ export class SecretService {
     return `${normalizedType}:${normalizedSystem}:${normalizedIdentifiers}`;
   }
 
-  private normalizeSegment(value?: string, label?: string) {
+  private normalizeSegment(value: string, label: string) {
     const normalized = (value ?? '').trim();
 
     if (!normalized) {
@@ -170,35 +226,45 @@ export class SecretService {
     return normalized;
   }
 
-  private normalizeIdentifiers(identifiers?: string | string[]) {
+  private normalizeIdentifiers(identifiers: string | string[]) {
     if (!identifiers) {
       throw new BadRequestException('Parametro obrigatorio: identifiers');
     }
 
     const parts = Array.isArray(identifiers) ? identifiers : String(identifiers).split(',');
-    const normalized = parts.map((item) => item.trim()).filter(Boolean).join(',');
+    const normalized = parts.map((item) => item.trim()).filter(Boolean).join(':');
 
     if (!normalized) {
-      throw new BadRequestException('Parametro obrigatorio: identifiers');
+      throw new BadRequestException('Erro no formato de identifiers');
     }
 
     return normalized;
   }
 
   private computeHash(reference_row: string) {
-    return createHash('md5').update(reference_row).digest('hex');
+    return createHash('sha256').update(reference_row).digest('hex');
   }
 
   private toDate(value?: string) {
-    return value ? new Date(value) : null;
-  }
-
-  private isUniqueViolation(error: unknown) {
-    if (!error || typeof error !== 'object') {
-      return false;
+    if (!value) {
+      return null;
     }
 
-    const errorWithCode = error as { code?: string };
-    return errorWithCode.code === '23505';
+    const normalized = value.trim();
+
+    const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+    if (dateOnlyRegex.test(normalized)) {
+      return new Date(`${normalized}T00:00:00-03:00`);
+    }
+
+    const parsed = new Date(normalized);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('expires_at invalido');
+    }
+
+    return parsed;
   }
+
 }

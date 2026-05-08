@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Patch } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -32,6 +33,7 @@ import {
 
 @Controller('secrets')
 @ApiTags('secrets')
+@ApiBearerAuth('access-token')
 export class SecretController {
   constructor(private readonly secretService: SecretService) {}
 
@@ -55,7 +57,7 @@ export class SecretController {
     return this.secretService.rotate(body);
   }
 
-  @Get('row')
+  @Get('by-row')
   @ApiOperation({ summary: 'Buscar secret ativo por row' })
   @ApiQuery(rowTypeQuery)
   @ApiQuery(rowSystemQuery)
@@ -71,7 +73,7 @@ export class SecretController {
     return this.secretService.findActiveByRow(type, system, identifiers);
   }
 
-  @Get('hash/:hash')
+  @Get('by-hash/:hash')
   @ApiOperation({ summary: 'Buscar secret ativo por hash' })
   @ApiParam(hashParam)
   @ApiOkResponse(secretOkResponse)
@@ -80,7 +82,7 @@ export class SecretController {
     return this.secretService.findActiveByHash(hash);
   }
 
-  @Get('id/:id')
+  @Get('by-id/:id')
   @ApiOperation({ summary: 'Buscar secret por id' })
   @ApiParam(idParam)
   @ApiOkResponse(secretOkResponse)
@@ -89,7 +91,7 @@ export class SecretController {
     return this.secretService.findById(id);
   }
 
-  @Delete('row')
+  @Patch('by-row/deactivate')
   @ApiOperation({ summary: 'Inativar secret por row' })
   @ApiQuery(rowTypeQuery)
   @ApiQuery(rowSystemQuery)
@@ -105,7 +107,7 @@ export class SecretController {
     return this.secretService.deactivateByRow(type, system, identifiers);
   }
 
-  @Delete('hash/:hash')
+  @Patch('by-hash/:hash/deactivate')
   @ApiOperation({ summary: 'Inativar secret por hash' })
   @ApiParam(hashParam)
   @ApiOkResponse(deactivateOkResponse)
@@ -114,7 +116,7 @@ export class SecretController {
     return this.secretService.deactivateByHash(hash);
   }
 
-  @Delete('id/:id')
+  @Patch('by-id/:id/deactivate')
   @ApiOperation({ summary: 'Inativar secret por id' })
   @ApiParam(idParam)
   @ApiOkResponse(deactivateOkResponse)

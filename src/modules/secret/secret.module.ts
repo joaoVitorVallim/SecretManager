@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SecretController } from './secret.controller';
 import { SecretService } from './secret.service';
 import { SecretEntity } from './entities/secret.entity';
+import { CryptoService } from 'src/common/guards/crypto.service';
 
 @Module({
   imports: [
@@ -12,6 +13,6 @@ import { SecretEntity } from './entities/secret.entity';
 
   controllers: [SecretController],
 
-  providers: [SecretService],
+  providers: [SecretService, CryptoService],
 })
 export class SecretModule {}

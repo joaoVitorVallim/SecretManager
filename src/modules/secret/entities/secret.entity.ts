@@ -1,4 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+import type { EncryptedPayload } from 'src/common/types/encrypted-payload.type';
+
 
 @Entity('secret_manager')
 @Index('idx_unique_active_secret', ['reference_hash'], {unique: true, where: '"is_active" = true'})
@@ -7,14 +9,14 @@ export class SecretEntity {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
 
-  @Column({ type: 'varchar', length: 32 })
+  @Column({ type: 'varchar', length: 64 })
   reference_hash: string;
 
   @Column({ type: 'varchar', length: 255 })
   reference_row: string;
 
   @Column({ type: 'jsonb'})
-  credentials: Record<string, any>;
+  credentials: EncryptedPayload;
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;

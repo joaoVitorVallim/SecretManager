@@ -11,6 +11,7 @@ export default () => ({
 
   auth: {
     apiToken: process.env.API_TOKEN,
+    secretEncryptionKey: process.env.SECRET_ENCRYPTION_KEY,
   },
   
 });
