@@ -6,6 +6,7 @@ import { createHash } from 'crypto';
 import { SecretEntity } from './entities/secret.entity';
 import { CreateSecretDto } from './dto/create-secret.dto';
 import { CryptoService } from 'src/common/guards/crypto.service';
+import toResponse from './maps/secret.mapper';
 
 @Injectable()
 export class SecretService {
@@ -40,7 +41,8 @@ export class SecretService {
       is_active: true,
     });
 
-    return await this.secretRepository.save(secret);
+    const saved = await this.secretRepository.save(secret);
+    return this.mapSecret(saved);
   }
 
   async rotate(data: CreateSecretDto) {
@@ -74,11 +76,12 @@ export class SecretService {
         is_active: true,
       });
 
-      return repo.save(secret);
+      const saved = await repo.save(secret);
+      return this.mapSecret(saved);
     });
   }
 
-  async findActiveByRow(type: string, system: string, identifiers: string | string[]) {
+  async findActiveByRow(type: string, system: string, identifiers: string[]) {
     const normalizedType = this.normalizeSegment(type, 'type');
     const normalizedSystem = this.normalizeSegment(system, 'system');
     const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
@@ -90,12 +93,7 @@ export class SecretService {
       throw new NotFoundException('Active secret not found');
     }
 
-    const credentials = this.cryptoService.decrypt(secret.credentials);
-
-    return {
-      ...secret,
-      credentials
-    };
+    return this.mapSecret(secret);
   }
 
   async findActiveByHash(hash: string) {
@@ -105,15 +103,10 @@ export class SecretService {
       throw new NotFoundException('Active secret not found');
     }
 
-    const credentials = this.cryptoService.decrypt(secret.credentials);
-
-    return {
-      ...secret,
-      credentials
-    };
+    return this.mapSecret(secret);
   }
 
-  async findByRow(type: string, system: string, identifiers: string | string[]) {
+  async findByRow(type: string, system: string, identifiers: string[]) {
     const normalizedType = this.normalizeSegment(type, 'type');
     const normalizedSystem = this.normalizeSegment(system, 'system');
     const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
@@ -132,7 +125,7 @@ export class SecretService {
 
     return {
       ...secret,
-      credentials
+      credentials,
     };
   }
 
@@ -150,7 +143,7 @@ export class SecretService {
 
     return {
       ...secret,
-      credentials
+      credentials,
     };
   }
 
@@ -172,7 +165,7 @@ export class SecretService {
   async getAll(options?: {
     type?: string;
     system?: string;
-    identifiers?: string | string[];
+    identifiers?: string[];
     active?: boolean;
     page?: string | number;
     limit?: string | number;
@@ -208,15 +201,10 @@ export class SecretService {
 
     const [secrets, total] = await query.getManyAndCount();
 
-    const data = secrets.map((secret) => ({
-      ...secret,
-      credentials: this.cryptoService.decrypt(secret.credentials),
-    }));
-
     const pages = total === 0 ? 0 : Math.ceil(total / limit);
 
     return {
-      data,
+      data: secrets.map((secret) => this.mapSecret(secret)),
       meta: {
         page,
         limit,
@@ -226,7 +214,7 @@ export class SecretService {
     };
   }
 
-  async deactivateByRow(type: string, system: string, identifiers: string | string[]) {
+  async deactivateByRow(type: string, system: string, identifiers: string[]) {
     const secret = await this.findByRow(type, system, identifiers);
     return this.deactivateSecret(secret);
   }
@@ -251,7 +239,11 @@ export class SecretService {
       deactivated_at: new Date(),
     });
 
-    return { message: 'Secret deactivated' };
+    return { message: `Secret ${secret.type}:${secret.system}:${secret.identifiers} deactivated` };
+  }
+
+  private mapSecret(secret: SecretEntity) {
+    return toResponse(secret, (payload) => this.cryptoService.decrypt(payload));
   }
 
   private buildReferenceHash(type: string, system: string, identifiers: string[]) {
@@ -277,19 +269,15 @@ export class SecretService {
     return normalized ? normalized : undefined;
   }
 
-  private parseIdentifiers(identifiers?: string | string[]) {
+  private parseIdentifiers(identifiers?: string[]) {
     if (!identifiers) {
       return [];
     }
 
-    const parts = Array.isArray(identifiers)
-      ? identifiers
-      : String(identifiers).split(',');
-
-    return parts.map((item) => String(item).trim()).filter(Boolean);
+    return identifiers.map((item) => String(item).trim()).filter(Boolean);
   }
 
-  private normalizeIdentifiers(identifiers: string | string[]) {
+  private normalizeIdentifiers(identifiers: string[]) {
     const normalized = this.parseIdentifiers(identifiers);
 
     if (!normalized.length) {
@@ -299,7 +287,7 @@ export class SecretService {
     return normalized;
   }
 
-  private normalizeOptionalIdentifiers(identifiers?: string | string[]) {
+  private normalizeOptionalIdentifiers(identifiers?: string[]) {
     const normalized = this.parseIdentifiers(identifiers);
     return normalized.length ? normalized : undefined;
   }

@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSecretDto {
@@ -33,6 +34,7 @@ export class CreateSecretDto {
   })
   @IsArray()
   @ArrayNotEmpty()
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
   @IsString({ each: true })
   identifiers: string[];
 

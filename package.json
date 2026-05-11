@@ -14,6 +14,8 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
 
+    "db:create:prod": "docker exec -it nome_do_container createdb -U postgres secret_manager || echo 'Banco já existe'",
+    "db:create:dev": "createdb -U postgres -h localhost secret_manager",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/infra/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/infra/database/data-source.ts",

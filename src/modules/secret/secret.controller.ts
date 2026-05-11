@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Patch, Delete } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -14,6 +14,7 @@ import {
 } from '@nestjs/swagger';
 import { SecretService } from './secret.service';
 import { CreateSecretDto } from './dto/create-secret.dto';
+import { ParseIdentifiersPipe } from 'src/common/pipes/parse-identifiers.pipe';
 import {
   badRequestResponse,
   conflictResponse,
@@ -27,9 +28,6 @@ import {
   registerBody,
   rotateBody,
   activeQuery,
-  searchIdentifiersQuery,
-  searchSystemQuery,
-  searchTypeQuery,
   rowIdentifiersQuery,
   rowSystemQuery,
   rowTypeQuery,
@@ -63,7 +61,7 @@ export class SecretController {
   getAll(
     @Query('type') type?: string,
     @Query('system') system?: string,
-    @Query('identifiers') identifiers?: string | string[],
+    @Query('identifiers', new ParseIdentifiersPipe({ required: false })) identifiers?: string[],
     @Query('active') active?: boolean,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -92,7 +90,7 @@ export class SecretController {
   findByRow(
     @Query('type') type: string,
     @Query('system') system: string,
-    @Query('identifiers') identifiers: string | string[],
+    @Query('identifiers', new ParseIdentifiersPipe()) identifiers: string[],
   ) {
     return this.secretService.findActiveByRow(type, system, identifiers);
   }
@@ -115,18 +113,15 @@ export class SecretController {
     return this.secretService.findById(id);
   }
 
-  @Patch('by-row/deactivate')
-  @ApiOperation({ summary: 'Deactivate secret by row' })
-  @ApiQuery(rowTypeQuery)
-  @ApiQuery(rowSystemQuery)
-  @ApiQuery(rowIdentifiersQuery)
+  @Patch('by-row/:type/:system/:identifiers/deactivate')
+  @ApiOperation({summary: 'Deactivate secret by row'})
   @ApiOkResponse(deactivateOkResponse)
   @ApiNotFoundResponse(notFoundActiveResponse)
   @ApiBadRequestResponse(badRequestResponse)
   deactivateByRow(
-    @Query('type') type: string,
-    @Query('system') system: string,
-    @Query('identifiers') identifiers: string | string[],
+    @Param('type') type: string,
+    @Param('system') system: string,
+    @Param('identifiers', new ParseIdentifiersPipe()) identifiers: string[],
   ) {
     return this.secretService.deactivateByRow(type, system, identifiers);
   }
