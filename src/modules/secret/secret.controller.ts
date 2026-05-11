@@ -20,14 +20,21 @@ import {
   deactivateOkResponse,
   hashParam,
   idParam,
+  limitQuery,
   notFoundActiveResponse,
   notFoundResponse,
+  pageQuery,
   registerBody,
   rotateBody,
+  activeQuery,
+  searchIdentifiersQuery,
+  searchSystemQuery,
+  searchTypeQuery,
   rowIdentifiersQuery,
   rowSystemQuery,
   rowTypeQuery,
   secretCreatedResponse,
+  secretListOkResponse,
   secretOkResponse,
 } from './swagger/secret.swagger';
 
@@ -45,6 +52,23 @@ export class SecretController {
   @ApiBadRequestResponse(badRequestResponse)
   register(@Body() body: CreateSecretDto) {
     return this.secretService.register(body);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'List secrets' })
+  @ApiQuery(activeQuery)
+  @ApiQuery(pageQuery)
+  @ApiQuery(limitQuery)
+  @ApiOkResponse(secretListOkResponse)
+  getAll(
+    @Query('type') type?: string,
+    @Query('system') system?: string,
+    @Query('identifiers') identifiers?: string | string[],
+    @Query('active') active?: boolean,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.secretService.getAll({ type, system, identifiers, active, page, limit });
   }
 
   @Post('rotate')

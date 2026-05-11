@@ -16,8 +16,10 @@ export class SecretService {
   ) {}
 
   async register(data: CreateSecretDto) {
-    const reference_row = this.normalizeReferenceRow(data.reference_row);
-    const reference_hash = this.computeHash(reference_row);
+    const type = this.normalizeSegment(data.type, 'type');
+    const system = this.normalizeSegment(data.system, 'system');
+    const identifiers = this.normalizeIdentifiers(data.identifiers);
+    const reference_hash = this.buildReferenceHash(type, system, identifiers);
     const encrypted = this.cryptoService.encrypt(data.credentials);
 
     const existing = await this.secretRepository.findOne({
@@ -29,7 +31,9 @@ export class SecretService {
     }
 
     const secret = this.secretRepository.create({
-      reference_row,
+      type,
+      system,
+      identifiers,
       reference_hash,
       credentials: encrypted,
       expires_at: this.toDate(data.expires_at),
@@ -40,26 +44,30 @@ export class SecretService {
   }
 
   async rotate(data: CreateSecretDto) {
-    const reference_row = this.normalizeReferenceRow(data.reference_row);
-    const reference_hash = this.computeHash(reference_row);
+    const type = this.normalizeSegment(data.type, 'type');
+    const system = this.normalizeSegment(data.system, 'system');
+    const identifiers = this.normalizeIdentifiers(data.identifiers);
+    const reference_hash = this.buildReferenceHash(type, system, identifiers);
     const encrypted = this.cryptoService.encrypt(data.credentials);
 
     return this.secretRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(SecretEntity);
 
-      const active = await repo.findOne({where: { reference_hash, is_active: true }});
+      const active = await repo.findOne({ where: { reference_hash, is_active: true } });
 
       if (!active) {
         throw new NotFoundException('No active secret found. Use /register to create one.');
       }
 
-      await this.secretRepository.update(active.id, {
+      await repo.update(active.id, {
         is_active: false,
         deactivated_at: new Date(),
       });
 
       const secret = repo.create({
-        reference_row,
+        type,
+        system,
+        identifiers,
         reference_hash,
         credentials: encrypted,
         expires_at: this.toDate(data.expires_at),
@@ -71,10 +79,12 @@ export class SecretService {
   }
 
   async findActiveByRow(type: string, system: string, identifiers: string | string[]) {
-    const reference_row = this.buildReferenceRowFromQuery(type, system, identifiers);
-    const reference_hash = this.computeHash(reference_row);
+    const normalizedType = this.normalizeSegment(type, 'type');
+    const normalizedSystem = this.normalizeSegment(system, 'system');
+    const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
+    const reference_hash = this.buildReferenceHash(normalizedType, normalizedSystem, normalizedIdentifiers);
 
-    const secret = await this.secretRepository.findOne({where: { reference_hash, is_active: true }});
+    const secret = await this.secretRepository.findOne({ where: { reference_hash, is_active: true } });
 
     if (!secret) {
       throw new NotFoundException('Active secret not found');
@@ -89,7 +99,7 @@ export class SecretService {
   }
 
   async findActiveByHash(hash: string) {
-    const secret = await this.secretRepository.findOne({where: { reference_hash: hash, is_active: true }});
+    const secret = await this.secretRepository.findOne({ where: { reference_hash: hash, is_active: true } });
 
     if (!secret) {
       throw new NotFoundException('Active secret not found');
@@ -104,8 +114,10 @@ export class SecretService {
   }
 
   async findByRow(type: string, system: string, identifiers: string | string[]) {
-    const reference_row = this.buildReferenceRowFromQuery(type, system, identifiers);
-    const reference_hash = this.computeHash(reference_row);
+    const normalizedType = this.normalizeSegment(type, 'type');
+    const normalizedSystem = this.normalizeSegment(system, 'system');
+    const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
+    const reference_hash = this.buildReferenceHash(normalizedType, normalizedSystem, normalizedIdentifiers);
 
     const secret = await this.secretRepository.findOne({
       where: { reference_hash },
@@ -143,7 +155,7 @@ export class SecretService {
   }
 
   async findById(id: number) {
-    const secret = await this.secretRepository.findOne({where: { id }});
+    const secret = await this.secretRepository.findOne({ where: { id } });
 
     if (!secret) {
       throw new NotFoundException('Secret not found');
@@ -153,9 +165,65 @@ export class SecretService {
 
     return {
       ...secret,
-      credentials
+      credentials,
     };
+  }
 
+  async getAll(options?: {
+    type?: string;
+    system?: string;
+    identifiers?: string | string[];
+    active?: boolean;
+    page?: string | number;
+    limit?: string | number;
+  }) {
+    const { page, limit, skip } = this.parsePagination(options?.page, options?.limit);
+
+    const query = this.secretRepository.createQueryBuilder('secret');
+
+    const type = this.normalizeOptionalSegment(options?.type);
+    if (type) {
+      query.andWhere('secret.type ILIKE :type', {
+        type: `%${type}%`,
+      });
+    }
+
+    const system = this.normalizeOptionalSegment(options?.system);
+    if (system) {
+      query.andWhere('secret.system ILIKE :system', {
+        system: `%${system}%`,
+      });
+    }
+
+    const identifiers = this.normalizeOptionalIdentifiers(options?.identifiers);
+    if (identifiers) {
+      query.andWhere('secret.identifiers && :identifiers', { identifiers });
+    }
+
+    if (options?.active !== undefined) {
+      query.andWhere('secret.is_active = :active', { active: options.active });
+    }
+
+    query.orderBy('secret.id', 'DESC').skip(skip).take(limit);
+
+    const [secrets, total] = await query.getManyAndCount();
+
+    const data = secrets.map((secret) => ({
+      ...secret,
+      credentials: this.cryptoService.decrypt(secret.credentials),
+    }));
+
+    const pages = total === 0 ? 0 : Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        pages,
+      },
+    };
   }
 
   async deactivateByRow(type: string, system: string, identifiers: string | string[]) {
@@ -165,7 +233,6 @@ export class SecretService {
 
   async deactivateByHash(hash: string) {
     const secret = await this.findByHash(hash);
-    console.log(secret)
     return this.deactivateSecret(secret);
   }
 
@@ -187,33 +254,12 @@ export class SecretService {
     return { message: 'Secret deactivated' };
   }
 
-  private normalizeReferenceRow(reference_row: string) {
-    const normalized = (reference_row ?? '').trim();
-
-    if (!normalized) {
-      throw new BadRequestException('reference_row is required');
-    }
-
-    const parts = normalized
-      .split(':')
-      .map((part) => part.trim())
-      .filter(Boolean);
-
-    if (parts.length < 3) {
-      throw new BadRequestException(
-        'reference_row must have at least 3 segments: type:system:identifiers',
-      );
-    }
-
-    return parts.join(':');
+  private buildReferenceHash(type: string, system: string, identifiers: string[]) {
+    return this.computeHash(this.buildReferenceValue(type, system, identifiers));
   }
 
-  private buildReferenceRowFromQuery(type: string, system: string, identifiers: string | string[]) {
-    const normalizedType = this.normalizeSegment(type, 'type');
-    const normalizedSystem = this.normalizeSegment(system, 'system');
-    const normalizedIdentifiers = this.normalizeIdentifiers(identifiers);
-
-    return `${normalizedType}:${normalizedSystem}:${normalizedIdentifiers}`;
+  private buildReferenceValue(type: string, system: string, identifiers: string[]) {
+    return `${type}:${system}:${identifiers.join(':')}`;
   }
 
   private normalizeSegment(value: string, label: string) {
@@ -226,23 +272,40 @@ export class SecretService {
     return normalized;
   }
 
-  private normalizeIdentifiers(identifiers: string | string[]) {
+  private normalizeOptionalSegment(value?: string) {
+    const normalized = (value ?? '').trim();
+    return normalized ? normalized : undefined;
+  }
+
+  private parseIdentifiers(identifiers?: string | string[]) {
     if (!identifiers) {
-      throw new BadRequestException('Required parameter: identifiers');
+      return [];
     }
 
-    const parts = Array.isArray(identifiers) ? identifiers : String(identifiers).split(',');
-    const normalized = parts.map((item) => item.trim()).filter(Boolean).join(':');
+    const parts = Array.isArray(identifiers)
+      ? identifiers
+      : String(identifiers).split(',');
 
-    if (!normalized) {
-      throw new BadRequestException('Invalid identifiers format');
+    return parts.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  private normalizeIdentifiers(identifiers: string | string[]) {
+    const normalized = this.parseIdentifiers(identifiers);
+
+    if (!normalized.length) {
+      throw new BadRequestException('Required parameter: identifiers');
     }
 
     return normalized;
   }
 
-  private computeHash(reference_row: string) {
-    return createHash('sha256').update(reference_row).digest('hex');
+  private normalizeOptionalIdentifiers(identifiers?: string | string[]) {
+    const normalized = this.parseIdentifiers(identifiers);
+    return normalized.length ? normalized : undefined;
+  }
+
+  private computeHash(value: string) {
+    return createHash('sha256').update(value).digest('hex');
   }
 
   private toDate(value?: string) {
@@ -262,6 +325,35 @@ export class SecretService {
 
     if (Number.isNaN(parsed.getTime())) {
       throw new BadRequestException('expires_at is invalid');
+    }
+
+    return parsed;
+  }
+
+  private parsePagination(pageValue?: string | number, limitValue?: string | number) {
+    const page = this.parsePositiveInt(pageValue, 1, 'page');
+    const limit = this.parsePositiveInt(limitValue, 20, 'limit');
+
+    if (limit > 100) {
+      throw new BadRequestException('limit must be less than or equal to 100');
+    }
+
+    return {
+      page,
+      limit,
+      skip: (page - 1) * limit,
+    };
+  }
+
+  private parsePositiveInt(value: string | number | undefined, fallback: number, label: string) {
+    if (value === undefined || value === null || value === '') {
+      return fallback;
+    }
+
+    const parsed = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new BadRequestException(`${label} must be a positive integer`);
     }
 
     return parsed;

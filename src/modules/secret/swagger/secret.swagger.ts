@@ -7,6 +7,7 @@ import {
 
 import {
 	secretDeactivateResponseExample,
+	secretListResponseExample,
 	secretRegisterExample,
 	secretResponseExample,
 } from './secret.examples';
@@ -47,7 +48,49 @@ export const rowIdentifiersQuery: ApiQueryOptions = {
 	name: 'identifiers',
 	required: true,
 	example: '123,456',
-	description: 'Comma-separated identifiers',
+	description: 'Comma-separated identifiers (exact match per item)',
+};
+
+export const searchTypeQuery: ApiQueryOptions = {
+	name: 'type',
+	required: false,
+	example: 'api',
+	description: 'Partial match for type segment',
+};
+
+export const searchSystemQuery: ApiQueryOptions = {
+	name: 'system',
+	required: false,
+	example: 'bling',
+	description: 'Partial match for system segment',
+};
+
+export const searchIdentifiersQuery: ApiQueryOptions = {
+	name: 'identifiers',
+	required: false,
+	example: '123',
+	description: 'Comma-separated identifiers to match any item',
+};
+
+export const activeQuery: ApiQueryOptions = {
+	name: 'active',
+	required: false,
+	example: true,
+	description: 'Filter by active status',
+};
+
+export const pageQuery: ApiQueryOptions = {
+	name: 'page',
+	required: false,
+	example: 1,
+	description: 'Page number (1-based)',
+};
+
+export const limitQuery: ApiQueryOptions = {
+	name: 'limit',
+	required: false,
+	example: 20,
+	description: 'Items per page (max 100)',
 };
 
 export const hashParam: ApiParamOptions = {
@@ -73,6 +116,13 @@ export const secretOkResponse: ApiResponseOptions = {
 	description: 'Active secret',
 	schema: {
 		example: secretResponseExample,
+	},
+};
+
+export const secretListOkResponse: ApiResponseOptions = {
+	description: 'Paginated secrets list',
+	schema: {
+		example: secretListResponseExample,
 	},
 };
 

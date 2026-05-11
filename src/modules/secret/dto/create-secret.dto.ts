@@ -1,4 +1,6 @@
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsDateString,
   IsNotEmpty,
   IsNotEmptyObject,
@@ -10,12 +12,29 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSecretDto {
   @ApiProperty({
-    example: 'API:bling:123,456',
-    description: 'TYPE:SYSTEM:IDENTIFIERS',
+    example: 'API',
+    description: 'Secret type',
   })
   @IsString()
   @IsNotEmpty()
-  reference_row: string;
+  type: string;
+
+  @ApiProperty({
+    example: 'bling',
+    description: 'Origin system',
+  })
+  @IsString()
+  @IsNotEmpty()
+  system: string;
+
+  @ApiProperty({
+    example: ['123', '456'],
+    description: 'Identifiers list',
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  identifiers: string[];
 
   @ApiProperty({
     type: 'object',

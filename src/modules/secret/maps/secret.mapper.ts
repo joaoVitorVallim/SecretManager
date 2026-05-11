@@ -1,13 +1,11 @@
-import { SecretEntity } from "../entities/secret.entity";
+import { SecretEntity } from '../entities/secret.entity';
 
-
-export default function toResponse(secret: SecretEntity) {
-  const { reference_hash, ...data } = secret;
-
+export default function toResponse(
+  secret: SecretEntity,
+  decrypt: (payload: SecretEntity['credentials']) => Record<string, any>,
+) {
   return {
-    ...data,
-    credentials: this.cryptoService.decrypt(
-      secret.credentials,
-    ),
+    ...secret,
+    credentials: decrypt(secret.credentials),
   };
 }

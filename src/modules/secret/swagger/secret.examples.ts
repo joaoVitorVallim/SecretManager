@@ -6,19 +6,33 @@ export const secretCredentialsExample = {
 };
 
 export const secretRegisterExample = {
-	reference_row: 'API:bling:123,456',
+	type: 'API',
+	system: 'bling',
+	identifiers: ['123', '456'],
 	credentials: secretCredentialsExample,
 };
 
 export const secretResponseExample = {
 	id: 1,
 	reference_hash: 'd41d8cd98f00b204e9800998ecf8427e',
-	reference_row: 'API:bling:123,456',
+	type: 'API',
+	system: 'bling',
+	identifiers: ['123', '456'],
 	credentials: secretCredentialsExample,
 	is_active: true,
 	created_at: '2026-05-07T10:00:00.000Z',
 	deactivated_at: null,
 	expires_at: null,
+};
+
+export const secretListResponseExample = {
+	data: [secretResponseExample],
+	meta: {
+		page: 1,
+		limit: 20,
+		total: 1,
+		pages: 1,
+	},
 };
 
 export const secretDeactivateResponseExample = {

@@ -81,7 +81,7 @@ Base URL: `/secrets`
 
 ## Observacoes
 
-- `reference_row` usa o formato `TYPE:SYSTEM:IDENTIFIERS`
-- `reference_hash` e SHA256 do `reference_row`
+- `type`, `system` e `identifiers` sao salvos separadamente
+- `reference_hash` e SHA256 do formato `TYPE:SYSTEM:IDENTIFIERS` (identifiers unidos por `:`)
 - `credentials` sao criptografados com AES-256-GCM usando `SECRET_ENCRYPTION_KEY`
 - Rotas de consulta retornam `credentials` descriptografado
