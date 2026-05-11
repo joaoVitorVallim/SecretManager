@@ -23,7 +23,7 @@ async function bootstrap() {
     .setDescription('API baseada no Secret Manager (Google) para gerenciar secrets')
     .setVersion('1.0')
     .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      { type: 'http', scheme: 'bearer', bearerFormat: 'API Token' },
       'access-token',
     )
     .build();

@@ -6,17 +6,20 @@ import {
 } from '@nestjs/swagger';
 
 import {
+	secretAlreadyInactiveResponseExample,
 	secretDeactivateResponseExample,
+	secretEncryptedResponseExample,
 	secretListResponseExample,
 	secretRegisterExample,
 	secretResponseExample,
 } from './secret.examples';
 
 export const registerBody: ApiBodyOptions = {
-	description: 'Registers a secret. Extra unmapped fields are accepted.',
+	description: 'Registers a secret. Unknown fields are rejected.',
 	schema: {
 		type: 'object',
-		additionalProperties: true,
+		required: ['type', 'system', 'identifiers', 'credentials'],
+		additionalProperties: false,
 		example: secretRegisterExample,
 	},
 };
@@ -25,7 +28,8 @@ export const rotateBody: ApiBodyOptions = {
 	description: 'Deactivates the active secret and creates a new one.',
 	schema: {
 		type: 'object',
-		additionalProperties: true,
+		required: ['type', 'system', 'identifiers', 'credentials'],
+		additionalProperties: false,
 		example: secretRegisterExample,
 	},
 };
@@ -55,14 +59,14 @@ export const searchTypeQuery: ApiQueryOptions = {
 	name: 'type',
 	required: false,
 	example: 'api',
-	description: 'Partial match for type segment',
+	description: 'Partial match for type segment (case-insensitive)',
 };
 
 export const searchSystemQuery: ApiQueryOptions = {
 	name: 'system',
 	required: false,
 	example: 'bling',
-	description: 'Partial match for system segment',
+	description: 'Partial match for system segment (case-insensitive)',
 };
 
 export const searchIdentifiersQuery: ApiQueryOptions = {
@@ -76,7 +80,7 @@ export const activeQuery: ApiQueryOptions = {
 	name: 'active',
 	required: false,
 	example: true,
-	description: 'Filter by active status',
+	description: 'Filter by active status (true or false)',
 };
 
 export const pageQuery: ApiQueryOptions = {
@@ -96,13 +100,36 @@ export const limitQuery: ApiQueryOptions = {
 export const hashParam: ApiParamOptions = {
 	name: 'hash',
 	required: true,
-	example: 'd41d8cd98f00b204e9800998ecf8427e',
+	example: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd38f7c6d94b8a4f8a1',
+	description: 'Reference hash (SHA256) of TYPE:SYSTEM:IDENTIFIERS',
 };
 
 export const idParam: ApiParamOptions = {
 	name: 'id',
 	required: true,
 	example: 1,
+	description: 'Secret id',
+};
+
+export const typeParam: ApiParamOptions = {
+	name: 'type',
+	required: true,
+	example: 'API',
+	description: 'Secret type',
+};
+
+export const systemParam: ApiParamOptions = {
+	name: 'system',
+	required: true,
+	example: 'bling',
+	description: 'Origin system',
+};
+
+export const identifiersParam: ApiParamOptions = {
+	name: 'identifiers',
+	required: true,
+	example: '123,456',
+	description: 'Comma-separated identifiers',
 };
 
 export const secretCreatedResponse: ApiResponseOptions = {
@@ -113,9 +140,16 @@ export const secretCreatedResponse: ApiResponseOptions = {
 };
 
 export const secretOkResponse: ApiResponseOptions = {
-	description: 'Active secret',
+	description: 'Active secret (credentials decrypted)',
 	schema: {
 		example: secretResponseExample,
+	},
+};
+
+export const secretEncryptedOkResponse: ApiResponseOptions = {
+	description: 'Secret (credentials encrypted)',
+	schema: {
+		example: secretEncryptedResponseExample,
 	},
 };
 
@@ -127,9 +161,12 @@ export const secretListOkResponse: ApiResponseOptions = {
 };
 
 export const deactivateOkResponse: ApiResponseOptions = {
-	description: 'Secret deactivated',
+	description: 'Secret deactivated or already inactive',
 	schema: {
-		example: secretDeactivateResponseExample,
+		oneOf: [
+			{ example: secretDeactivateResponseExample },
+			{ example: secretAlreadyInactiveResponseExample },
+		],
 	},
 };
 
@@ -149,7 +186,7 @@ export const conflictResponse: ApiResponseOptions = {
 	schema: {
 		example: {
 			statusCode: 409,
-			message: 'Active secret already exists',
+			message: 'Active secret already exists. Use /rotate to deactivate and create a new one.',
 			error: 'Conflict',
 		},
 	},
@@ -161,6 +198,17 @@ export const notFoundActiveResponse: ApiResponseOptions = {
 		example: {
 			statusCode: 404,
 			message: 'Active secret not found',
+			error: 'Not Found',
+		},
+	},
+};
+
+export const rotateNotFoundResponse: ApiResponseOptions = {
+	description: 'No active secret found to rotate',
+	schema: {
+		example: {
+			statusCode: 404,
+			message: 'No active secret found. Use /register to create one.',
 			error: 'Not Found',
 		},
 	},

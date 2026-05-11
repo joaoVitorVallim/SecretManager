@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Patch, Delete } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Patch } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -21,19 +21,27 @@ import {
   deactivateOkResponse,
   hashParam,
   idParam,
+  identifiersParam,
   limitQuery,
   notFoundActiveResponse,
   notFoundResponse,
   pageQuery,
   registerBody,
   rotateBody,
+  rotateNotFoundResponse,
+  searchIdentifiersQuery,
+  searchSystemQuery,
+  searchTypeQuery,
   activeQuery,
   rowIdentifiersQuery,
   rowSystemQuery,
   rowTypeQuery,
   secretCreatedResponse,
+  secretEncryptedOkResponse,
   secretListOkResponse,
   secretOkResponse,
+  systemParam,
+  typeParam,
 } from './swagger/secret.swagger';
 
 @Controller('secrets')
@@ -54,6 +62,9 @@ export class SecretController {
 
   @Get()
   @ApiOperation({ summary: 'List secrets' })
+  @ApiQuery(searchTypeQuery)
+  @ApiQuery(searchSystemQuery)
+  @ApiQuery(searchIdentifiersQuery)
   @ApiQuery(activeQuery)
   @ApiQuery(pageQuery)
   @ApiQuery(limitQuery)
@@ -73,7 +84,7 @@ export class SecretController {
   @ApiOperation({ summary: 'Rotate secret' })
   @ApiBody(rotateBody)
   @ApiCreatedResponse(secretCreatedResponse)
-  @ApiNotFoundResponse(notFoundActiveResponse)
+  @ApiNotFoundResponse(rotateNotFoundResponse)
   @ApiBadRequestResponse(badRequestResponse)
   rotate(@Body() body: CreateSecretDto) {
     return this.secretService.rotate(body);
@@ -107,16 +118,19 @@ export class SecretController {
   @Get('by-id/:id')
   @ApiOperation({ summary: 'Get secret by id' })
   @ApiParam(idParam)
-  @ApiOkResponse(secretOkResponse)
+  @ApiOkResponse(secretEncryptedOkResponse)
   @ApiNotFoundResponse(notFoundResponse)
   findById(@Param('id', ParseIntPipe) id: number) {
-    return this.secretService.findById(id);
+    return this.secretService.findActiveById(id);
   }
 
   @Patch('by-row/:type/:system/:identifiers/deactivate')
-  @ApiOperation({summary: 'Deactivate secret by row'})
+  @ApiOperation({ summary: 'Deactivate secret by row' })
+  @ApiParam(typeParam)
+  @ApiParam(systemParam)
+  @ApiParam(identifiersParam)
   @ApiOkResponse(deactivateOkResponse)
-  @ApiNotFoundResponse(notFoundActiveResponse)
+  @ApiNotFoundResponse(notFoundResponse)
   @ApiBadRequestResponse(badRequestResponse)
   deactivateByRow(
     @Param('type') type: string,
@@ -130,7 +144,7 @@ export class SecretController {
   @ApiOperation({ summary: 'Deactivate secret by hash' })
   @ApiParam(hashParam)
   @ApiOkResponse(deactivateOkResponse)
-  @ApiNotFoundResponse(notFoundActiveResponse)
+  @ApiNotFoundResponse(notFoundResponse)
   deactivateByHash(@Param('hash') hash: string) {
     return this.secretService.deactivateByHash(hash);
   }
