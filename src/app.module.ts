@@ -8,6 +8,8 @@ import { ApiKeyGuard } from './common/guards/api-key.guard';
 import envConfig from './config/env.config';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { RedisModule } from './infra/redis/redis.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -31,6 +33,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 
     ScheduleModule.forRoot(),
 
+    RedisModule,
     SecretModule,
   ],
   providers: [

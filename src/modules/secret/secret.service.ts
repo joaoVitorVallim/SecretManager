@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -10,9 +10,12 @@ import { SecretNormalizer } from './normalizers/secret.normalizer';
 import { PaginationHelper } from 'src/common/helpers/pagination.helper';
 import toResponse from './maps/secret.mapper';
 
+import { RedisService } from 'src/infra/redis/redis.service'; 
 
 @Injectable()
 export class SecretService {
+  private readonly logger = new Logger(SecretService.name)
+
   constructor(
     @InjectRepository(SecretEntity)
     private readonly secretRepository: Repository<SecretEntity>,
@@ -20,6 +23,7 @@ export class SecretService {
     private readonly hashBuilder: SecretHashBuilder,
     private readonly normalizer: SecretNormalizer,
     private readonly pagination: PaginationHelper,
+    private readonly redisService: RedisService,
   ) {}
 
   async register(data: CreateSecretDto) {
@@ -47,7 +51,7 @@ export class SecretService {
     const { type, system, identifiers, reference_hash } = this.resolveKey(data);
     const encrypted = this.cryptoService.encrypt(data.credentials);
 
-    return this.secretRepository.manager.transaction(async (manager) => {
+    const secretRotate = await this.secretRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(SecretEntity);
 
       const active = await repo.findOne({ where: { reference_hash, is_active: true } });
@@ -66,35 +70,49 @@ export class SecretService {
 
       return this.mapSecret(saved);
     });
+    
+    const cacheKey = RedisService.activeHash(reference_hash);
+    await this.redisService.delete(cacheKey);
+
+    return secretRotate;
   }
 
+  
   async findActiveByRow(type: string, system: string, identifiers: string[]) {
     const hash = this.resolveHashFromRaw(type, system, identifiers);
-    const secret = await this.secretRepository.findOne({ where: { reference_hash: hash, is_active: true } });
-    if (!secret) throw new NotFoundException('Active secret not found');
-    return this.mapSecret(secret);
+
+    return this.findActiveByHash(hash);
   }
 
   async findActiveByHash(hash: string) {
-    const secret = await this.secretRepository.findOne({ where: { reference_hash: hash, is_active: true } });
-    if (!secret) throw new NotFoundException('Active secret not found');
-    return this.mapSecret(secret);
+    const cacheKey = RedisService.activeHash(hash);
+
+    return this.redisService.getOrSetCache(
+      cacheKey,
+      async () => {
+        const secret = await this.secretRepository.findOne({ where: { reference_hash: hash, is_active: true } });
+        if (!secret) throw new NotFoundException('Active secret not found');
+        return this.mapSecret(secret);
+      },
+    );
   }
 
   async findActiveById(id: number) {
-    const secret = await this.secretRepository.findOne({ where: { id, is_active: true } });
-    if (!secret) throw new NotFoundException('Active secret not found');
-    return this.mapSecret(secret);
+    const cacheKey = RedisService.activeId(id);
+
+    return this.redisService.getOrSetCache(
+      cacheKey,
+      async () => {
+        const secret = await this.secretRepository.findOne({ where: { id, is_active: true } });
+        if (!secret) throw new NotFoundException('Active secret not found');
+        return this.mapSecret(secret);
+      }
+    )
   }
 
   async findByRow(type: string, system: string, identifiers: string[]) {
     const hash = this.resolveHashFromRaw(type, system, identifiers);
-    const secret = await this.secretRepository.findOne({
-      where: { reference_hash: hash },
-      order: { is_active: 'DESC', id: 'DESC' },
-    });
-    if (!secret) throw new NotFoundException('Secret not found');
-    return secret;
+    return this.findByHash(hash);
   }
 
   async findByHash(hash: string) {
@@ -176,6 +194,11 @@ export class SecretService {
     if (!secret.is_active) return { message: 'Secret already inactive' };
 
     await this.secretRepository.update(secret.id, { is_active: false, deactivated_at: new Date() });
+    await Promise.all([
+      this.redisService.delete(RedisService.activeHash(secret.reference_hash)),
+      this.redisService.delete(RedisService.activeId(secret.id)),
+    ]);
+
     return { message: `Secret ${secret.type}:${secret.system}:${secret.identifiers.join(':')} deactivated` };
   }
 

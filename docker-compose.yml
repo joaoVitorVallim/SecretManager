@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - secret_manager_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -24,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file: .env
     environment:
       DB_HOST: ${DB_HOST_DOCKER}
@@ -35,3 +49,4 @@ services:
 
 volumes:
   secret_manager_db:
+  secret_manager_redis:
