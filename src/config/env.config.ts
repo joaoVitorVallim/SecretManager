@@ -13,5 +13,32 @@ export default () => ({
     apiToken: process.env.API_TOKEN,
     secretEncryptionKey: process.env.SECRET_ENCRYPTION_KEY,
   },
+
+  mail: {
+    host: process.env.MAIL_HOST,
+
+    port: Number(process.env.MAIL_PORT ?? 587),
+
+    user: process.env.MAIL_USER,
+
+    pass: process.env.MAIL_PASS,
+
+    from: process.env.MAIL_FROM,
+
+    expiryAlertDays: Number(
+      process.env.MAIL_EXPIRY_ALERT_DAYS ?? 5,
+    ),
+
+    alertRecipients: (
+      process.env.MAIL_ALERT_RECIPIENTS ?? ''
+    )
+      .split(',')
+      .map((email) => email.trim())
+      .filter(Boolean),
+  },
+
+  slack: {
+    webhookUrl: process.env.SLACK_WEBHOOK_URL,
+  },
   
 });

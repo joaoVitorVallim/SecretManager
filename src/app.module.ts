@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { SecretModule } from './modules/secret/secret.module';
 import { ApiKeyGuard } from './common/guards/api-key.guard';
 import envConfig from './config/env.config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -27,6 +28,8 @@ import envConfig from './config/env.config';
         synchronize: false,
       }),
     }),
+
+    ScheduleModule.forRoot(),
 
     SecretModule,
   ],
