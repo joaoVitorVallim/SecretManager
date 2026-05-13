@@ -44,7 +44,7 @@ services:
       DB_HOST: ${DB_HOST}
       NODE_ENV: production
     ports:
-      - "3000:3000"
+      - "${LOCAL_APP_PORT}:${APP_PORT}"
     command: >
       sh -c "node ./node_modules/typeorm/cli.js migration:run -d dist/infra/database/data-source.js && node dist/main"
 
