@@ -1,12 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+
 @Injectable()
 export class SecretNormalizer {
   segment(value: string, label: string): string {
-    const normalized = (value ?? '').trim();
+    let normalized = (value ?? '').trim();
+    
     if (!normalized) {
       throw new BadRequestException(`Required parameter: ${label}`);
     }
+
+    if (label === 'type') { normalized = normalized.toUpperCase() }
+    else if (label === 'system') { normalized = normalized.toLowerCase() }
+
     return normalized;
   }
 

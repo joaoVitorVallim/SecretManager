@@ -171,7 +171,7 @@ export class SecretService {
     return this.deactivateSecret(await this.findById(id));
   }
 
-  
+
   // ─── Privados ────────────────────────────────────────────────
 
   private resolveKey(data: CreateSecretDto) {

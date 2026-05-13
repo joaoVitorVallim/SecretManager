@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { ConfigService } from '@nestjs/config';
 
-const DEFAULT_TTL = 300;
 
 @Injectable()
 export class RedisService {
@@ -9,6 +9,7 @@ export class RedisService {
   constructor(
     @Inject('REDIS_CLIENT')
     private readonly redis: Redis,
+    private readonly configService: ConfigService,
   ) {}
 
   // normalização de chaves para evitar duplicação e erros de digitação
@@ -38,7 +39,7 @@ export class RedisService {
   async set(
     key: string,
     value: unknown,
-    ttl: number = Number(process.env.REDIS_TTL) || DEFAULT_TTL,
+    ttl: number = Number(this.configService.get<string>('redis.TTL')),
   ): Promise<void> {
     const payload = JSON.stringify(value);
 
