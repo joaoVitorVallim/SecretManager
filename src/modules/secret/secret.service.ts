@@ -87,14 +87,15 @@ export class SecretService {
   async findActiveByHash(hash: string) {
     const cacheKey = RedisService.activeHash(hash);
 
-    return this.redisService.getOrSetCache(
+    const secret = await this.redisService.getOrSetCache(
       cacheKey,
       async () => {
         const secret = await this.secretRepository.findOne({ where: { reference_hash: hash, is_active: true } });
         if (!secret) throw new NotFoundException('Active secret not found');
-        return this.mapSecret(secret);
+        return secret;
       },
     );
+    return this.mapSecret(secret)
   }
 
   async findActiveById(id: number) {
