@@ -9,6 +9,7 @@ import envConfig from './config/env.config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { RedisModule } from './infra/redis/redis.module';
+import { SystemController } from './app.controller';
 
 @Module({
   imports: [
@@ -42,5 +43,6 @@ import { RedisModule } from './infra/redis/redis.module';
       useClass: ApiKeyGuard,
     },
   ],
+  controllers: [SystemController],
 })
 export class AppModule {}
