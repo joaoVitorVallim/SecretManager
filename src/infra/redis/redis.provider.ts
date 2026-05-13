@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 export const RedisProvider = {
   
   provide: 'REDIS_CLIENT',
-  Inject: [ConfigService],
+  inject: [ConfigService],
 
   useFactory: (configService: ConfigService) => {
     const redis = new Redis({
