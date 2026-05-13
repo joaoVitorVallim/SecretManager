@@ -77,10 +77,8 @@ export class SecretService {
     return secretRotate;
   }
 
-  
   async findActiveByRow(type: string, system: string, identifiers: string[]) {
     const hash = this.resolveHashFromRaw(type, system, identifiers);
-
     return this.findActiveByHash(hash);
   }
 
@@ -101,14 +99,15 @@ export class SecretService {
   async findActiveById(id: number) {
     const cacheKey = RedisService.activeId(id);
 
-    return this.redisService.getOrSetCache(
+    const secret = await this.redisService.getOrSetCache(
       cacheKey,
       async () => {
         const secret = await this.secretRepository.findOne({ where: { id, is_active: true } });
         if (!secret) throw new NotFoundException('Active secret not found');
-        return this.mapSecret(secret);
+        return secret;
       }
-    )
+    );
+    return this.mapSecret(secret);
   }
 
   async findByRow(type: string, system: string, identifiers: string[]) {
