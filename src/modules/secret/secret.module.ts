@@ -7,8 +7,7 @@ import { SecretEntity } from './entities/secret.entity';
 import { SecretHashBuilder } from './builders/secret-hash.builder';
 import { SecretNormalizer } from './normalizers/secret.normalizer';
 import { CommonModule } from 'src/common/common.module';
-import { MailModule } from 'src/common/warnings/mail/mail.module';
-import { SlackModule } from 'src/common/warnings/slack/slack.module';
+import { WarningsModule } from 'src/common/warnings/warnings.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SecretExpiryJob } from './jobs/secret-expiry.job';
 
@@ -17,8 +16,7 @@ import { SecretExpiryJob } from './jobs/secret-expiry.job';
   imports: [
     TypeOrmModule.forFeature([SecretEntity]),
     CommonModule,
-    MailModule,
-    SlackModule,
+    WarningsModule,
     ScheduleModule,
   ],
   

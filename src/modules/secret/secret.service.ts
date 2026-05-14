@@ -11,6 +11,7 @@ import { PaginationHelper } from 'src/common/helpers/pagination.helper';
 import toResponse from './maps/secret.mapper';
 
 import { RedisService } from 'src/infra/redis/redis.service'; 
+import { SlackService } from 'src/common/warnings/slack/slack.service';
 
 @Injectable()
 export class SecretService {
@@ -24,6 +25,7 @@ export class SecretService {
     private readonly normalizer: SecretNormalizer,
     private readonly pagination: PaginationHelper,
     private readonly redisService: RedisService,
+    private readonly slackService: SlackService,
   ) {}
 
   async register(data: CreateSecretDto) {
@@ -198,6 +200,8 @@ export class SecretService {
       this.redisService.delete(RedisService.activeHash(secret.reference_hash)),
       this.redisService.delete(RedisService.activeId(secret.id)),
     ]);
+
+    await this.slackService.notifySecretDisabled(secret);
 
     return { message: `Secret ${secret.type}:${secret.system}:${secret.identifiers.join(':')} deactivated` };
   }

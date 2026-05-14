@@ -7,28 +7,50 @@ export function expiringSecretSlackMessage(
     credentials: Record<string, any>;
   }[],
 ) {
-    const today = new Date().toLocaleDateString('pt-BR');
+  const today = new Date().toLocaleDateString('pt-BR');
 
-    const rows = secrets.map((s) => {
-      const expiresAt = s.expires_at.toLocaleDateString('pt-BR');
-      const credentialKeys = Object.keys(s.credentials ?? {}).join(', ');
+  return {
+    text: 'Secret Manager',
 
-      return [
-        `💻 *${s.type}* • ${s.system}`,
-        `📌 \`${s.identifiers.join(':')}\``,
-        `🔑 ${credentialKeys || 'N/A'}`,
-        `Expira em: *${expiresAt}*`,
-      ].join('\n');
-  })
-  .join('\n\n━━━━━━━━━━━━━━━━━━\n\n');
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: `🚨 ${secrets.length} secret(s) próximos do vencimento • ${today}`,
+        },
+      },
 
-  return [
-    `📋 *Relatório do dia ${today}*`,
-    '',
-    `🚨 *${secrets.length} secret(s) próximos do vencimento*`,
-    '',
-    rows,
-    '',
-    '👉 Rotacione as credenciais no *Secret Manager*.',
-  ].join('\n\n');
+      {
+        type: 'divider',
+      },
+
+      ...secrets.flatMap((s) => {
+        const expiresAt =
+          s.expires_at.toLocaleDateString('pt-BR');
+
+        const credentialKeys =
+          Object.keys(s.credentials ?? {}).join(', ') ||
+          'N/A';
+
+        return [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: [
+                `💻 *${s.type}:${s.system}:${s.identifiers.join(':')}*`,
+                `🔑 ${credentialKeys}`,
+                `⏳ ${expiresAt}`,
+              ].join('  •  '),
+            },
+          },
+
+          {
+            type: 'divider',
+          },
+        ];
+      }),
+    ],
+  };
 }

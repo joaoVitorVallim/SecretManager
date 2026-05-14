@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { SecretEntity } from '../entities/secret.entity';
 import { MailService } from 'src/common/warnings/mail/mail.service';
 import { expiringSecretMailTemplate } from 'src/common/warnings/mail/templates/expiring-secret-mail.template';
-import { expiringSecretSlackMessage } from 'src/common/warnings/slack/templates/expiring-secret-slack.template';
 import { SlackService } from 'src/common/warnings/slack/slack.service';
 import { CryptoService } from 'src/common/guards/crypto.service';
 
@@ -26,8 +25,8 @@ export class SecretExpiryJob {
     private readonly cryptoService: CryptoService
   ) {}
   
-  @Cron('20 9 * * 1-5')
-  //@Cron('0 8 * * 1-5')
+  @Cron('*/30 * * * * *', { timeZone: 'America/Sao_Paulo' })
+  //@Cron('0 0 8 * * 1-5', { timeZone: 'America/Sao_Paulo' })
   async checkExpiringSecrets() {
     this.logger.log('Verificando secrets próximos do vencimento...');
 
@@ -111,7 +110,7 @@ export class SecretExpiryJob {
       =========================
     */
 
-    const message = expiringSecretSlackMessage(decryptedSecrets);
-    await this.slackService.sendText(message);
+    this.slackService.notifySecretExpiring(decryptedSecrets);
+    
   }
 }
